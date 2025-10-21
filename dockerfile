@@ -20,6 +20,10 @@ COPY . .
 # Generar cliente Prisma
 RUN npx prisma generate
 
+# Crear base e inicializarla
+RUN npx prisma migrate dev --name init_schema
+RUN npx tsx prisma/seed.ts || echo "Seed opcional, continuando..."
+
 # Compilar la aplicación (Next.js)
 RUN npm run build
 
