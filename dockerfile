@@ -1,47 +1,45 @@
 # ============================
-#      Dockerfile V3
+#      Dockerfile Optimizado
 # ============================
 
 # Etapa 1: Construcción del proyecto
 FROM node:20-alpine AS builder
 
-# Establecer directorio de trabajo
 WORKDIR /app
 
-# Copiar archivos de dependencias
+# Copiar dependencias
 COPY package*.json ./
-
-# Instalar dependencias
 RUN npm install
 
-# Copiar todo el código
+# Copiar el resto del código
 COPY . .
 
 # Generar cliente Prisma
 RUN npx prisma generate
 
-# Crear base e inicializarla
-RUN npx prisma migrate dev --name init_schema
-RUN npx tsx prisma/seed.ts || echo "Seed opcional, continuando..."
-
-# Compilar la aplicación (Next.js)
+# Compilar la app
 RUN npm run build
 
 # ============================
-# Etapa 2: Imagen final (ligera)
+# Etapa 2: Imagen final
 # ============================
 FROM node:20-alpine AS runner
 
 WORKDIR /app
 
-# Copiar solo lo necesario desde la etapa anterior
-COPY --from=builder /app ./
-
-# Exponer el puerto de Next.js
-EXPOSE 3000
-
-# Variables de entorno
 ENV NODE_ENV=production
 
-# Comando para ejecutar Prisma migrations al iniciar el contenedor
+# Copiar solo lo necesario
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/prisma ./prisma
+
+# Exponer puerto
+EXPOSE 3000
+
+# Al iniciar el contenedor:
+# - Asegura migraciones
+# - Ejecuta la app
 CMD npx prisma migrate deploy && npm start
